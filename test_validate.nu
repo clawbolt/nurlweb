@@ -11,11 +11,11 @@ $ `stdlib/ext/json.nu`
 
 @ test_schema_build Ctx ctx → !Json ValidateErr {
     : Schema s ( schema_new )
-    ( schema_field s `name` FIELD_TYPE_STRING REQUIRED )
-    ( schema_field s `age` FIELD_TYPE_NUMBER OPTIONAL )
-    ( schema_field s `active` FIELD_TYPE_BOOL REQUIRED )
-    ( schema_field s `tags` FIELD_TYPE_ARRAY OPTIONAL )
-    ( schema_field s `meta` FIELD_TYPE_OBJECT OPTIONAL )
+    ( schema_field s `name` ( FIELD_TYPE_STRING ) ( REQUIRED ) )
+    ( schema_field s `age` ( FIELD_TYPE_NUMBER ) ( OPTIONAL ) )
+    ( schema_field s `active` ( FIELD_TYPE_BOOL ) ( REQUIRED ) )
+    ( schema_field s `tags` ( FIELD_TYPE_ARRAY ) ( OPTIONAL ) )
+    ( schema_field s `meta` ( FIELD_TYPE_OBJECT ) ( OPTIONAL ) )
     : !Json ValidateErr result ( validate_json ctx s )
     ( schema_free s )
     ^ result
@@ -51,7 +51,7 @@ $ `stdlib/ext/json.nu`
 
 @ test_schema_free → v {
     : Schema s ( schema_new )
-    ( schema_field s `x` FIELD_TYPE_STRING REQUIRED )
+    ( schema_field s `x` ( FIELD_TYPE_STRING ) ( REQUIRED ) )
     ( schema_free s )
 }
 
