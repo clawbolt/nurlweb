@@ -40,10 +40,26 @@ $ `stdlib/core/option.nu`
     ^ ( params_get . c params name )
 }
 
-// ctx_param_i DEFERRED — nurlc IR codegen bug with ?i (Option<i>) return type.
-// The `: ~ ?i` mutable binding generates wrong LLVM IR (zext i1 to { i1, i64 }).
-// Inline string_to_int at the call site until the compiler is fixed.
-// @ ctx_param_i Ctx c s name → ?i { ... }
+@ ctx_param_i Ctx c s name → ?i {
+    : ?String s_opt ( ctx_param c name )
+    ?? s_opt {
+        T raw → {
+            : !i ParseErr ir ( string_to_int raw )
+            ?? ir {
+                T n → {
+                    ( string_free raw )
+                    ^ @ ?i { T n }
+                }
+                F _ → {
+                    ( string_free raw )
+                    ^ @ ?i { F 0 }
+                }
+            }
+        }
+        F _ → { ^ @ ?i { F 0 } }
+    }
+}
+
 
 // ── Query extraction ─────────────────────────────────────────────────
 //

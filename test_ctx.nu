@@ -25,6 +25,12 @@ $ `stdlib/core/option.nu`
 
 // ── Test: ctx_body_raw ────────────────────────────────────────────────
 
+// ── Test: ctx_param_i integer extraction ──────────────────────────
+
+@ test_ctx_param_i Ctx ctx → ?i {
+    ^ ( ctx_param_i ctx `id` )
+}
+
 @ test_ctx_body_raw Ctx ctx → s {
     ^ ( ctx_body_raw ctx )
 }

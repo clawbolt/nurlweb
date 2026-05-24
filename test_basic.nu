@@ -21,6 +21,18 @@ $ `stdlib/ext/http_full.nu`
     ^ . b worker_count
 }
 
+// ── Test: app_with_dos sets DoS limits ────────────────────────────────
+
+@ test_app_dos → i {
+    : App a ( app_new `0.0.0.0` 4000 )
+    : DosLimits dl ( dos_default_limits )
+    = . dl max_concurrent_conns 512
+    = . dl max_conns_per_ip 8
+    : App b ( app_with_dos a dl )
+    : i mc . b dos_max_conns
+    ^ mc
+}
+
 // ── Test: route registration compiles ─────────────────────────────────
 
 @ test_routes → v {

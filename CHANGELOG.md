@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0.0] - 2026-05-25
+
+### Added
+- `ctx_param_i` — integer param extraction (nurlc ?i bug fixed, unblocks Phase B)
+- `app_with_dos` — app-level DoS protection via `server_new_with_dos` (stdlib)
+- `session.nu` — cookie-based session management (get/set/del, production defaults)
+- `upload.nu` — multipart file upload wrapper (upload_parts, upload_free)
+- `template.nu` — minimal `{{key}}` string template rendering (Vec<TemplateVar>)
+- `examples/rest_api.nu` — full REST API demo with ctx_param_i
+
+### Changed
+- `App` struct: added `dos_max_conns` / `dos_max_per_ip` fields
+- `__serve_bind`: uses `server_new_with_dos` when dos limits are configured
+- `nurlweb.nu`: added commented v1.2 module imports
+
 ## [0.1.0.0] - 2026-05-24
 
 ### Added

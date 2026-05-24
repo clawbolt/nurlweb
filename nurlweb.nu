@@ -19,3 +19,9 @@ $ `nurlweb/ctx.nu`
 // $ `nurlweb/auth.nu`       // auth helpers Ctx-style (basic/bearer)
 // $ `nurlweb/static.nu`     // static file serving (serve_static)
 // $ `nurlweb/ws.nu`         // WebSocket integration (separate port)
+
+// ── v1.2 production modules (uncomment to use) ────────────────────────
+//
+// $ `nurlweb/session.nu`    // cookie-based session management
+// $ `nurlweb/upload.nu`     // multipart file upload (upload_parts)
+// $ `nurlweb/template.nu`   // {{key}} string template rendering
