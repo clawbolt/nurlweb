@@ -8,13 +8,13 @@ $ `nurlweb/static.nu`
 // ── Test: static_serve return type ────────────────────────────────────
 
 @ test_static_serve Ctx ctx → HttpResponse {
-    ^ ( static_serve `./public` ctx )
+    ^ ( static_serve ctx `./public` )
 }
 
 // ── Test: static_dir alias ────────────────────────────────────────────
 
 @ test_static_dir Ctx ctx → HttpResponse {
-    ^ ( static_dir `./public` ctx )
+    ^ ( static_dir ctx `./public` )
 }
 
 // ── Test: static_serve_route compiles ─────────────────────────────────

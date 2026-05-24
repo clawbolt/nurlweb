@@ -4,8 +4,8 @@
 // ad-hoc serving with Ctx, and route registration convenience.
 //
 // API:
-//   ( static_serve       s dir Ctx ctx )  → HttpResponse
-//   ( static_dir         s dir Ctx ctx )  → HttpResponse  (alias)
+//   ( static_serve       Ctx ctx s dir )  → HttpResponse
+//   ( static_dir         Ctx ctx s dir )  → HttpResponse  (alias)
 //   ( static_serve_route App a s prefix s dir ) → v
 //   ( static_mime        s ext )          → s            (borrowed)
 //
@@ -14,7 +14,7 @@
 //   ( app_get app `/assets`
 //       \ HttpRequest req Params params → HttpResponse {
 //           : Ctx ctx ( ctx_new req params )
-//           ^ ( static_serve `./public` ctx )
+//           ^ ( static_serve ctx `./public` )
 //       })
 //
 //   // Convenience route registration:
@@ -27,13 +27,13 @@ $ `stdlib/ext/http_static.nu`
 
 // Serves a static file from `dir` based on the request path. Delegates to
 // stdlib serve_static which handles path safety, MIME detection, and 403/404.
-@ static_serve s dir Ctx ctx → HttpResponse {
+@ static_serve Ctx ctx s dir → HttpResponse {
     : HttpRequest r . ctx req
     ^ ( serve_static dir r )
 }
 
 // Alias for discoverability
-@ static_dir s dir Ctx ctx → HttpResponse {
+@ static_dir Ctx ctx s dir → HttpResponse {
     ^ ( static_serve dir ctx )
 }
 
