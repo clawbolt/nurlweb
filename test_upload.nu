@@ -10,10 +10,16 @@ $ `stdlib/ext/http_full.nu`
 $ `stdlib/ext/http_multipart.nu`
 $ `stdlib/core/vec.nu`
 
-// ── Test: upload_parts compiles ──────────────────────────────────────
+// ── Test: upload_parts compiles (default limit) ──────────────────────
 
 @ test_upload_parts Ctx ctx → ?( Vec MultipartPart ) {
     ^ ( upload_parts ctx )
+}
+
+// ── Test: upload_parts_with_limit compiles ────────────────────────────
+
+@ test_upload_parts_with_limit Ctx ctx → ?( Vec MultipartPart ) {
+    ^ ( upload_parts_with_limit ctx 5242880 )
 }
 
 // ── Test: upload_free compiles ───────────────────────────────────────

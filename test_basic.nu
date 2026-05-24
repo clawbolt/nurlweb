@@ -21,14 +21,11 @@ $ `stdlib/ext/http_full.nu`
     ^ . b worker_count
 }
 
-// ── Test: app_with_dos sets DoS limits ────────────────────────────────
+// ── Test: app_with_dos sets per-IP DoS limits (individual fields) ─────
 
 @ test_app_dos → i {
     : App a ( app_new `0.0.0.0` 4000 )
-    : DosLimits dl ( dos_default_limits )
-    = . dl max_concurrent_conns 512
-    = . dl max_conns_per_ip 8
-    : App b ( app_with_dos a dl )
+    : App b ( app_with_dos a 512 8 )
     : i mc . b dos_max_conns
     ^ mc
 }
