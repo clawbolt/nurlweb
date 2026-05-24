@@ -3,6 +3,11 @@
 // Ergonomic wrapper around stdlib http_auth.nu cookie primitives.
 // Stateless: all data lives in the cookie — no server-side store.
 // Production defaults: HttpOnly, Secure, SameSite=Lax, Path=/.
+// Cookie size limit: browsers enforce ~4KB total per domain. The value
+// passed to session_set should stay under ~3800 bytes to leave headroom
+// for cookie attributes (Path, Secure, HttpOnly, SameSite).
+//
+// MAX_COOKIE_VALUE = 3800
 //
 // API:
 //   ( session_get Ctx ctx s name )                       → ?String
@@ -43,5 +48,6 @@ $ `stdlib/core/string.nu`
     = . opts max_age 0
     = . opts secure T
     = . opts http_only T
+    = . opts same_site @ SameSite { SameSiteLax }
     ( response_set_cookie r name `` opts )
 }

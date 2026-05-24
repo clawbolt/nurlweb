@@ -4,6 +4,11 @@
 // Uses Vec<TemplateVar> (not Map) because NURL Map stores i64 only.
 // Linear scan for key lookup — production templates typically have < 20 vars.
 //
+
+// WARNING: template_render does NOT escape HTML entities. Do NOT use
+// for HTML templates with untrusted user input — this will create XSS
+// vulnerabilities. Use a dedicated HTML template engine for web output.
+// This module is for plain-text string interpolation only.
 // API:
 //   ( template_render s template ( Vec TemplateVar ) vars )  → String
 //   ( template_file   s path    ( Vec TemplateVar ) vars )  → !String IoErr
@@ -24,6 +29,10 @@ $ `stdlib/std/fs.nu`
     ( string_free . tv value )
 }
 
+// Manual byte comparison instead of string_eq because the template key
+// is a slice (s) within the borrowed template string — constructing a
+// String for string_eq would allocate. Template rendering is allocation-
+// sensitive (called per-request), so the manual loop is intentional.
 // ── __try_push_var — push value if key matches, return T if matched ──
 
 @ __try_push_var ( Vec TemplateVar ) vars i key_start s template i key_len String out → b {
