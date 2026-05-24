@@ -75,17 +75,14 @@ $ `stdlib/core/option.nu`
     } { ^ `` }
 }
 
+// Delegates to ctx_body_raw for body extraction; parses the result as JSON.
 @ ctx_body_json Ctx c → !Json ParseErr {
-    : HttpRequest r . c req
-    : i n ( vec_len [u] . r body )
-    ? > n 0 {
-        : *u data ( vec_data [u] . r body )
-        : String bs ( string_from_bytes data n )
-        : s raw ( string_data bs )
-        : !Json ParseErr jr ( json_parse raw )
-        ( string_free bs )
-        ^ jr
-    } { ^ @ !Json ParseErr { F @ ParseErr { Empty } } }
+    : s raw ( ctx_body_raw c )
+    ? != 0 ( nurl_str_len raw ) {
+        ^ ( json_parse raw )
+    } {
+        ^ @ !Json ParseErr { F @ ParseErr { Empty } }
+    }
 }
 
 // ── Response helpers ──────────────────────────────────────────────────

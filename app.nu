@@ -112,15 +112,16 @@ $ `stdlib/ext/http_server.nu`
 
 // ── Serve ─────────────────────────────────────────────────────────────
 
-// Blocking server: tcp_listen → server_new → server_run.
-// Installs SIGINT/SIGTERM graceful shutdown. Returns on clean stop.
-@ app_serve App a → !v NetErr {
+// Shared bind: tcp_listen → server_new → signal_install → runner.
+// Takes a `runner` closure that receives the bound server and returns
+// !v NetErr; app_close unconditionally after the runner finishes.
+@ __serve_bind App a ( @ !v NetErr HttpServer ) runner → !v NetErr {
     : ! TcpListener NetErr lr ( tcp_listen . a host . a port )
     ?? lr {
         T listener → {
             : HttpServer srv ( server_new listener . a handler )
             ( signal_install_shutdown listener )
-            : !v NetErr rr ( server_run srv )
+            : !v NetErr rr ( runner srv )
             ( server_stop srv )
             ^ rr
         }
@@ -128,31 +129,20 @@ $ `stdlib/ext/http_server.nu`
     }
 }
 
+// Blocking server: __serve_bind + server_run.
+// Installs SIGINT/SIGTERM graceful shutdown. Returns on clean stop.
+@ app_serve App a → !v NetErr {
+    ^ ( __serve_bind a
+        \ HttpServer srv → !v NetErr { ^ ( server_run srv ) } )
+}
+
 // Async (fiber-based) server: uses the single-thread fiber scheduler
 // (shipped Phase 1+2). M:N work-stealing (Phase 3) is a free upgrade
 // when it lands — no API change needed.
 @ app_serve_async App a → !v NetErr {
     ( runtime_init . a worker_count )
-
-    : ! TcpListener NetErr lr ( tcp_listen . a host . a port )
-    ?? lr {
-        T listener → {
-            : HttpServer srv ( server_new listener . a handler )
-            ( signal_install_shutdown listener )
-            : !v NetErr rr ( server_run_async srv )
-            ?? rr {
-                T _ → {
-                    ( server_stop srv )
-                    ( runtime_shutdown )
-                    ^ @ !v NetErr { T 0 }
-                }
-                F e → {
-                    ( server_stop srv )
-                    ( runtime_shutdown )
-                    ^ @ !v NetErr { F e }
-                }
-            }
-        }
-        F e → { ^ @ !v NetErr { F e } }
-    }
+    : !v NetErr rr ( __serve_bind a
+        \ HttpServer srv → !v NetErr { ^ ( server_run_async srv ) } )
+    ( runtime_shutdown )
+    ^ rr
 }
