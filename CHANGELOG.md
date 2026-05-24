@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.0.0] - 2026-05-25
+
+### Added
+- `cors.nu` — permissive CORS middleware wrapper (app_with_cors)
+- `session.nu` SessionStore — in-memory server-side session storage (get/set/del, MemorySessionStore default)
+- `template.nu` Layout — `template_render_layout` with `{{% content %}}` marker
+- `template.nu` Include — `{{> path }}` directive for template composition
+- `bin/nurlweb` — CLI project scaffolding (`nurlweb new my-app`)
+- `templates/app.nu.tmpl` — project template with routes + middleware stubs
+- `templates/hello.nu.tmpl` — minimal hello-world project template
+- E2E CRUD test cycle for `examples/rest_api.nu` in `test_e2e.sh`
+
+### Changed
+- `session.nu`: extended with SessionStore struct + session_store_* API
+- `template.nu`: added __scan_to_close, __resolve_includes, template_render_layout
+- `template_render`: now resolves `{{> path }}` includes before var substitution
+- `nurlweb.nu`: updated module import comments for v1.2
+- `test_session.nu`: added 5 SessionStore compile-time tests
+- `test_template.nu`: added layout, include, edge case, and unmatched var tests
+- `test_e2e.sh`: hardcoded nurlc/runtime paths for standalone nurlweb repo
+
+### Fixed
+- CEO F2: template single-brace `{{` edge case — scanner now emits literal `{{` when `}}` not found
+- CEO F1: upload.nu Content-Length bypass — nurl_str_to_int returns 0 for non-numeric input, fallback check verified against stdlib multipart
+
 ## [0.2.0.0] - 2026-05-25
 
 ### Added
