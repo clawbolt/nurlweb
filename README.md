@@ -24,19 +24,33 @@ $ `stdlib/ext/http_full.nu`
 ## Install
 
 ```bash
-git clone https://github.com/clawbolt/nurlweb deps/nurlweb
+# Clone alongside your NURL project (the framework expects the directory name `nurlweb/`)
+git clone https://github.com/clawbolt/nurlweb nurlweb
 ```
 
 Import in your `.nu` file:
 
 ```nurl
-$ `deps/nurlweb/nurlweb.nu`   # full framework (App + Ctx)
-$ `deps/nurlweb/app.nu`       # micro-framework only
+$ `nurlweb/nurlweb.nu`   # full framework (App + Ctx)
+$ `nurlweb/app.nu`       # micro-framework only
 ```
 
 ## API
 
 See [FRAMEWORK.md](FRAMEWORK.md) for full API reference.
+
+## Build & Test
+
+Requires the [NURL compiler](https://github.com/nurl-lang/nurl) built alongside.
+
+```bash
+# Unit tests (compile-time — no network)
+../nurl/build/nurlc nurlweb/test_basic.nu
+../nurl/build/nurlc nurlweb/test_ctx.nu
+
+# E2E smoke tests (requires network)
+NURL_NET_TESTS=1 bash nurlweb/test_e2e.sh
+```
 
 ## License
 

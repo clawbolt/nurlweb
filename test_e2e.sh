@@ -18,6 +18,8 @@ fail=0
 pass_test() { echo -e "${GREEN}PASS${NC} $1"; pass=$((pass + 1)); }
 fail_test() { echo -e "${RED}FAIL${NC} $1 — $2"; fail=$((fail + 1)); }
 
+PID=""
+
 cleanup() {
     [ -n "${PID:-}" ] && kill "$PID" 2>/dev/null || true
     wait "$PID" 2>/dev/null || true
