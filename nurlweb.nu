@@ -1,19 +1,31 @@
-// nurlweb/nurlweb.nu — Single-import aggregator
+// nurlweb/nurlweb.nu — Single-import aggregator (v3.0 slim core)
 //
 // Clone nurlweb into your project as `nurlweb/`:
 //   git clone https://github.com/clawbolt/nurlweb nurlweb
 //
-// Then import in your .nu file:
-//   $ `nurlweb/nurlweb.nu`    → full framework (App + Ctx)
-//   $ `nurlweb/app.nu`        → micro-framework only
+// Then import:
+//   $ `nurlweb/nurlweb.nu`    → core framework (App + Respond + RouteGroup)
+//   $ `nurlweb/app.nu`        → micro-framework only (App)
 //
-// ctx.nu transitively includes app.nu — single $ line pulls everything.
+// Legacy modules moved to nurlweb/legacy/ (still accessible via shims):
+//   $ `nurlweb/legacy/ctx.nu`       → rich request context
+//   $ `nurlweb/legacy/session.nu`   → cookie + server-side sessions
+//   $ `nurlweb/legacy/orm.nu`       → SQLite ORM
+//   $ `nurlweb/legacy/template.nu`  → {{key}} template engine
+//   $ `nurlweb/legacy/auth.nu`      → basic + bearer auth
+//   $ `nurlweb/legacy/auth_jwt.nu`  → JWT authentication
+//   $ `nurlweb/legacy/upload.nu`    → multipart file upload
+//   $ `nurlweb/legacy/validate.nu`  → JSON schema validation
+//   $ `nurlweb/legacy/ws.nu`        → WebSocket server
+//   $ `nurlweb/legacy/cors.nu`      → CORS middleware
+//   $ `nurlweb/legacy/csrf.nu`      → CSRF protection
+//   $ `nurlweb/legacy/compress.nu`  → gzip compression
+//   $ `nurlweb/legacy/error.nu`     → error recovery middleware
+//   $ `nurlweb/legacy/logger.nu`    → request logging
+//   $ `nurlweb/legacy/static.nu`    → static file serving
+//   $ `nurlweb/legacy/timeout.nu`   → request timeout
+//   (existing imports via original paths still work via shims)
 
-$ `nurlweb/ctx.nu`
-
-// ── v1.2 modules ─────────────────────────────────────────────────────
-//
-// $ `nurlweb/session.nu`    // cookie + server-side SessionStore
-// $ `nurlweb/upload.nu`     // multipart file upload (upload_parts)
-// $ `nurlweb/template.nu`   // {{key}} + layout/include rendering
-// $ `nurlweb/cors.nu`       // permissive CORS middleware
+$ `nurlweb/app.nu`
+$ `nurlweb/respond.nu`
+$ `nurlweb/routegroup.nu`
