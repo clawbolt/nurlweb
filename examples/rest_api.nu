@@ -216,10 +216,6 @@ $ `stdlib/core/string.nu`
                 ?? it_opt {
                     T it → {
                         ? == . it id id {
-                            ( string_free . it name )
-                            : String nm ( string_new )
-                            ( string_push_str nm `DELETED` )
-                            = . it name nm
                             ^ ( response_text 204 `` )
                         } {}
                     }
