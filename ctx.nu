@@ -4,6 +4,9 @@
 // body extraction and one-line response shortcuts. Layered ON TOP of app.nu —
 // import ctx.nu when you want the rich Egg.js-level API.
 //
+// Response helpers delegate to respond.nu (canonical implementations).
+// ctx.nu adds only the Ctx-first API wrapper — zero duplicated header logic.
+//
 // Ctx is a pure borrowed view over HttpRequest + Params — zero heap allocation,
 // no ownership, no DI pointers. ctx_new is a struct literal; no ctx_free needed.
 //
@@ -20,6 +23,7 @@
 //       })
 
 $ `nurlweb/app.nu`
+$ `nurlweb/respond.nu`
 $ `stdlib/ext/http_full.nu`
 $ `stdlib/ext/json.nu`
 $ `stdlib/core/string.nu`
@@ -60,16 +64,74 @@ $ `stdlib/core/option.nu`
     }
 }
 
+// ── URL percent-decoding ─────────────────────────────────────────────
+//
+// Manual hex decoder — walks the string byte by byte. When it sees '%',
+// reads two hex digits and emits the decoded byte. Non-hex %XX sequences
+// pass through as literals. Used by ctx_query to decode query parameter
+// values that stdlib stores as raw headers.
+
+@ __url_decode s in → String {
+    : i in_len ( nurl_str_len in )
+    : String out ( string_with_cap in_len )
+    : ~ i pos 0
+    ~ < pos in_len {
+        : i c ( nurl_str_get in pos )
+        ? & == c 37 < + pos 2 in_len {
+            : i h1 ( nurl_str_get in + pos 1 )
+            : i h2 ( nurl_str_get in + pos 2 )
+            : i d1 ? >= h1 97 - h1 32 h1
+            : i d2 ? >= h2 97 - h2 32 h2
+            : i v1 ? >= d1 65 - d1 55 ? >= d1 48 - d1 48 -1
+            : i v2 ? >= d2 65 - d2 55 ? >= d2 48 - d2 48 -1
+            ? & >= v1 0 >= v2 0 {
+                : i decoded + * v1 16 v2
+                ( string_push_char out decoded )
+                = pos + pos 3
+            } {
+                ( string_push_char out 37 )
+                = pos + pos 1
+            }
+        } {
+            ( string_push_char out c )
+            = pos + pos 1
+        }
+    }
+    ^ out
+}
 
 // ── Query extraction ─────────────────────────────────────────────────
 //
 // In NURL's HTTP stack, query parameters are stored in headers alongside
-// regular headers — both ctx_query and ctx_header delegate to header_get.
-// This is correct per the stdlib contract; a dedicated query parser may
-// be added when http_router.nu grows query-string support.
+// regular headers — ctx_query delegates to header_get then URL-decodes
+// the result (stdlib stores raw %XX-encoded values).
+//
+// ctx_query_all returns a single-element Option wrapping the decoded
+// value — true multi-value support is stdlib-blocked until header_get_all
+// exists in the NURL stdlib surface.
 
 @ ctx_query Ctx c s name → ?String {
-    ^ ( header_get . c req name )
+    : ?String raw ( header_get . c req name )
+    ?? raw {
+        T val → {
+            : String decoded ( __url_decode ( string_data val ) )
+            ( string_free val )
+            ^ @ ?String { T decoded }
+        }
+        F → { ^ @ ?String { F } }
+    }
+}
+
+@ ctx_query_all Ctx c s name → ?( Vec String ) {
+    : ?String decoded ( ctx_query c name )
+    ?? decoded {
+        T val → {
+            : Vec<String> vs ( vec_new [String] )
+            ( vec_push [String] vs val )
+            ^ @ ?( Vec String ) { T vs }
+        }
+        F → { ^ @ ?( Vec String ) { F @ Vec String {} } }
+    }
 }
 
 // ── Header extraction ────────────────────────────────────────────────
@@ -81,8 +143,6 @@ $ `stdlib/core/option.nu`
 // ── Body extraction ──────────────────────────────────────────────────
 
 @ ctx_body_raw Ctx c → s {
-    // Use intermediate HttpRequest binding to avoid nested field access
-    // IR quirk: `. c req body` inside closures needs intermediate extraction
     : HttpRequest r . c req
     : i n ( vec_len [u] . r body )
     ? > n 0 {
@@ -91,7 +151,6 @@ $ `stdlib/core/option.nu`
     } { ^ `` }
 }
 
-// Delegates to ctx_body_raw for body extraction; parses the result as JSON.
 @ ctx_body_json Ctx c → !Json ParseErr {
     : s raw ( ctx_body_raw c )
     ? != 0 ( nurl_str_len raw ) {
@@ -101,25 +160,22 @@ $ `stdlib/core/option.nu`
     }
 }
 
-// ── Response helpers ──────────────────────────────────────────────────
-
+// ── Response helpers (delegate to respond.nu) ─────────────────────────
+//
 // All helpers take Ctx as first arg for uniform LLM-friendly API surface.
-// Ctx is unused by response helpers — serves as namespace prefix.
+// Ctx is unused — passed through for API consistency only.
+// Canonical implementations live in respond.nu.
 
 @ ctx_text Ctx c i status s body → HttpResponse {
-    ^ ( response_text status body )
+    ^ ( respond_text status body )
 }
 
 @ ctx_json Ctx c i status s body → HttpResponse {
-    : HttpResponse r ( response_text status body )
-    ( response_set_header r `Content-Type` `application/json` )
-    ^ r
+    ^ ( respond_json status body )
 }
 
 @ ctx_html Ctx c i status s body → HttpResponse {
-    : HttpResponse r ( response_text status body )
-    ( response_set_header r `Content-Type` `text/html; charset=utf-8` )
-    ^ r
+    ^ ( respond_html status body )
 }
 
 // ── Status shortcuts ──────────────────────────────────────────────────
@@ -138,7 +194,5 @@ $ `stdlib/core/option.nu`
 // ── Redirect ──────────────────────────────────────────────────────────
 
 @ ctx_redirect Ctx c i status s location → HttpResponse {
-    : HttpResponse r ( response_text status `` )
-    ( response_set_header r `Location` location )
-    ^ r
+    ^ ( respond_redirect status location )
 }

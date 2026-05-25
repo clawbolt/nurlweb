@@ -1,8 +1,8 @@
-// nurlweb/respond.nu — Standalone Response Shortcuts
+// nurlweb/respond.nu — Standalone Response Shortcuts (CANONICAL)
 //
 // Response helpers that don't require Ctx as first argument — for use
 // in middleware and utility functions where Ctx isn't available.
-// Same implementation as ctx.nu helpers minus the unused Ctx arg.
+// These are the canonical implementations; ctx.nu delegates to them.
 //
 // API:
 //   ( respond_text     i status s body )     → HttpResponse
