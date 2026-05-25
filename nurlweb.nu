@@ -1,4 +1,5 @@
 // nurlweb/nurlweb.nu — Single-import aggregator (v3.0 slim core)
+// Stability: stable
 //
 // Clone nurlweb into your project as `nurlweb/`:
 //   git clone https://github.com/clawbolt/nurlweb nurlweb

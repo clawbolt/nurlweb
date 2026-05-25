@@ -1,4 +1,5 @@
 // nurlweb/app.nu — NurlWeb micro-framework v1
+// Stability: stable
 //
 // A ~200 LOC wiring reducer for the NURL HTTP stack. Single App struct
 // that owns router, middleware pipeline, server config, and the full
