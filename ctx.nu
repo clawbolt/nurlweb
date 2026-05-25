@@ -237,33 +237,30 @@ $ `stdlib/core/option.nu`
 // Ctx is unused — passed through for API consistency only.
 // Canonical implementations live in respond.nu.
 
-@ ctx_text Ctx c i status s body → HttpResponse {
+@ ctx_text i status s body → HttpResponse {
     ^ ( respond_text status body )
 }
 
-@ ctx_json Ctx c i status s body → HttpResponse {
+@ ctx_json i status s body → HttpResponse {
     ^ ( respond_json status body )
 }
 
-@ ctx_html Ctx c i status s body → HttpResponse {
+@ ctx_html i status s body → HttpResponse {
     ^ ( respond_html status body )
 }
 
 // ── Status shortcuts ──────────────────────────────────────────────────
 
-@ ctx_ok Ctx c s body → HttpResponse          { ^ ( ctx_text c 200 body ) }
-@ ctx_created Ctx c s body → HttpResponse     { ^ ( ctx_text c 201 body ) }
-@ ctx_accepted Ctx c s body → HttpResponse    { ^ ( ctx_text c 202 body ) }
-@ ctx_no_content Ctx c → HttpResponse         { ^ ( ctx_text c 204 `` ) }
-@ ctx_bad_request Ctx c s msg → HttpResponse  { ^ ( ctx_text c 400 msg ) }
-@ ctx_unauthorized Ctx c s msg → HttpResponse { ^ ( ctx_text c 401 msg ) }
-@ ctx_forbidden Ctx c s msg → HttpResponse    { ^ ( ctx_text c 403 msg ) }
-@ ctx_not_found Ctx c s msg → HttpResponse    { ^ ( ctx_text c 404 msg ) }
-@ ctx_conflict Ctx c s msg → HttpResponse     { ^ ( ctx_text c 409 msg ) }
-@ ctx_error Ctx c s msg → HttpResponse        { ^ ( ctx_text c 500 msg ) }
+// Status shortcuts — kept to the essential 3. For other codes use ctx_text directly:
+//   ( ctx_text ctx 201 body )  instead of  ctx_created
+//   ( ctx_text ctx 401 msg  )  instead of  ctx_unauthorized
+//   ( ctx_text ctx 409 msg  )  instead of  ctx_conflict
+@ ctx_ok s body → HttpResponse       { ^ ( ctx_text 200 body ) }
+@ ctx_not_found s msg → HttpResponse { ^ ( ctx_text 404 msg ) }
+@ ctx_error s msg → HttpResponse     { ^ ( ctx_text 500 msg ) }
 
 // ── Redirect ──────────────────────────────────────────────────────────
 
-@ ctx_redirect Ctx c i status s location → HttpResponse {
+@ ctx_redirect i status s location → HttpResponse {
     ^ ( respond_redirect status location )
 }
