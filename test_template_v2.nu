@@ -3,7 +3,7 @@
 // Run: ./build/nurlc nurlweb/test_template_v2.nu
 // Expected: exit 0
 
-$ `nurlweb/template_v2.nu`
+$ `nurlweb/template.nu`
 
 // ── template_if smoke test ───────────────────────────────────────────
 

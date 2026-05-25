@@ -28,6 +28,32 @@ $ `stdlib/core/vec.nu`
 @ param_int i v → OrmParam   { ^ @ OrmParam { 1 v `` } }
 @ param_text s v → OrmParam  { ^ @ OrmParam { 2 0 v } }
 @ param_null → OrmParam       { ^ @ OrmParam { 3 0 `` } }
+// ── orm_quote_ident — safe SQL identifier quoting ────────────────────
+// Double-quotes the identifier and escapes embedded quotes per SQLite
+// rules. Use for table/column names built from user input.
+//
+//   ( orm_quote_ident `users` )  →  `"users"`
+//   ( orm_quote_ident `a"b` )    →  `"a""b"`
+
+@ orm_quote_ident s name → String {
+    : i nlen ( nurl_str_len name )
+    : String out ( string_with_cap + nlen 4 )
+    ( string_push_char out 34 )  // opening quote
+    : ~ i pos 0
+    ~ < pos nlen {
+        : i ch ( nurl_str_get name pos )
+        ? == ch 34 {
+            ( string_push_char out 34 )
+            ( string_push_char out 34 )
+        } {
+            ( string_push_char out ch )
+        }
+        = pos + pos 1
+    }
+    ( string_push_char out 34 )  // closing quote
+    ^ out
+}
+
 
 // ── OrmRow ops ────────────────────────────────────────────────────────
 
