@@ -135,15 +135,10 @@ $ `stdlib/ext/http_server.nu`
     ?? lr {
         T listener → {
             : i dc . a dos_max_conns
-            : HttpServer srv
-            ? > dc 0 {
-                : DosLimits dl ( dos_default_limits )
-                = . dl max_concurrent_conns dc
-                = . dl max_conns_per_ip . a dos_max_per_ip
-                = srv ( server_new_with_dos listener . a handler dl )
-            } {
-                = srv ( server_new listener . a handler )
-            }
+            : DosLimits dl ( dos_default_limits )
+            = . dl max_concurrent_conns dc
+            = . dl max_conns_per_ip . a dos_max_per_ip
+            : HttpServer srv ( server_new_with_dos listener . a handler dl )
             ( signal_install_shutdown listener )
             : !v NetErr rr ( runner srv )
             ( server_stop srv )

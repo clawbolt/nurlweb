@@ -1,20 +1,22 @@
-// examples/rest_api.nu — Full REST API demo (nurlweb v1.2+)
+// examples/rest_api.nu — Full REST API demo (nurlweb v0.4 slim core)
 //
-// Demonstrates: app_new, app_get, app_post, app_put, app_delete,
-//   ctx_new, ctx_param, ctx_param_i, ctx_body_json, ctx_json,
-//   ctx_not_found, ctx_bad_request, ctx_created, ctx_no_content
+// Demonstrates: app_new, app_get/post/put/delete, respond_*,
+//   params_get, json_parse, json_obj_get, json_str_data
 //
 // Build & run (from nurl repo root):
-//   ./build/nurlc examples/rest_api.nu && ./a.out
+//   ./nurlc nurlweb/examples/rest_api.nu > /tmp/rest.ll
+//   clang -O2 /tmp/rest.ll stdlib/runtime.o -lm -lpthread \
+//     -lcurl -lssl -lcrypto -lsqlite3 -lz \
+//     -L/opt/homebrew/opt/openssl@3/lib -o /tmp/rest
+//   /tmp/rest
 //
-// Test (in another terminal):
+// Test:
 //   curl http://127.0.0.1:3920/items
-//   curl http://127.0.0.1:3920/items/1
 //   curl -X POST http://127.0.0.1:3920/items -d '{"name":"foo"}'
-//   curl -X PUT http://127.0.0.1:3920/items/1 -d '{"name":"bar"}'
-//   curl -X DELETE http://127.0.0.1:3920/items/1
+//   curl -X PUT http://127.0.0.1:3920/items/0 -d '{"name":"bar"}'
+//   curl -X DELETE http://127.0.0.1:3920/items/0
 
-$ `nurlweb/ctx.nu`
+$ `nurlweb/app.nu`
 $ `stdlib/ext/http_full.nu`
 $ `stdlib/ext/json.nu`
 $ `stdlib/core/vec.nu`
@@ -37,11 +39,32 @@ $ `stdlib/core/string.nu`
     ( string_free . it name )
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────
+
+// Parse body bytes → JSON. Returns !Json ParseErr.
+@ parse_body_json HttpRequest req → !Json ParseErr {
+    : i n ( vec_len [u] . req body )
+    ? > n 0 {
+        : *u data ( vec_data [u] . req body )
+        : String bs ( string_from_bytes data n )
+        : s raw ( string_data bs )
+        : !Json ParseErr jr ( json_parse raw )
+        ( string_free bs )
+        ^ jr
+    } { ^ @ !Json ParseErr { F @ ParseErr { Empty } } }
+}
+
+// Convert string to int (returns -1 on failure for simplicity).
+@ str_to_int_or s raw i fallback → i {
+    : i v ( nurl_str_to_int raw )
+    ? != v 0 { ^ v } {
+        ? == ( nurl_str_get raw 0 ) 48 { ^ 0 } { ^ fallback }
+    }
+}
+
 // ── Route handlers ───────────────────────────────────────────────────
 
 @ handle_list_items ( Vec Item ) items HttpRequest req Params params → HttpResponse {
-    : Ctx ctx ( ctx_new req params )
-    // Build a simple JSON array: [{"id":1,"name":"foo"},...]
     : String out ( string_with_cap 256 )
     ( string_push_str out `[\n` )
     : i n ( vec_len [Item] items )
@@ -62,16 +85,17 @@ $ `stdlib/core/string.nu`
         = k + k 1
     }
     ( string_push_str out `]\n` )
-    : HttpResponse r ( ctx_text ctx 200 ( string_data out ) )
+    : HttpResponse r ( response_text 200 ( string_data out ) )
     ( string_free out )
     ^ r
 }
 
 @ handle_get_item ( Vec Item ) items HttpRequest req Params params → HttpResponse {
-    : Ctx ctx ( ctx_new req params )
-    : ?i id_opt ( ctx_param_i ctx `id` )
+    : ?String id_opt ( params_get params `id` )
     ?? id_opt {
-        T id → {
+        T sid → {
+            : i id ( str_to_int_or ( string_data sid ) -1 )
+            ? < id 0 { ^ ( response_text 400 `invalid id\n` ) } {}
             : i n ( vec_len [Item] items )
             : ~ i k 0
             ~ < k n {
@@ -85,7 +109,8 @@ $ `stdlib/core/string.nu`
                             ( string_push_str out `,"name":"` )
                             ( string_push_str out ( string_data . it name ) )
                             ( string_push_str out `"}\n` )
-                            : HttpResponse r ( ctx_json ctx 200 ( string_data out ) )
+                            : HttpResponse r ( response_text 200 ( string_data out )  )
+                            ( response_set_header r `Content-Type` `application/json` )
                             ( string_free out )
                             ^ r
                         } {}
@@ -94,24 +119,23 @@ $ `stdlib/core/string.nu`
                 }
                 = k + k 1
             }
-            ^ ( ctx_not_found ctx `item not found\n` )
+            ^ ( response_text 404 `item not found\n` )
         }
-        F → { ^ ( ctx_bad_request ctx `invalid id\n` ) }
+        F → { ^ ( response_text 400 `missing id\n` ) }
     }
 }
 
 @ handle_create_item ( Vec Item ) items HttpRequest req Params params → HttpResponse {
-    : Ctx ctx ( ctx_new req params )
-    : !Json ParseErr jr ( ctx_body_json ctx )
+    : !Json ParseErr jr ( parse_body_json req )
     ?? jr {
         T j → {
             : ?Json name_opt ( json_obj_get j `name` )
             ?? name_opt {
                 T name_json → {
                     ? ! ( json_is_str name_json ) {
-                        ^ ( ctx_bad_request ctx `name must be a string\n` )
+                        ^ ( response_text 400 `name must be a string\n` )
                     } {}
-                    : s name_str ( json_str_val name_json )
+                    : s name_str ( json_str_data name_json )
                     : i n ( vec_len [Item] items )
                     : Item it ( item_new n name_str )
                     ( vec_push [Item] items it )
@@ -121,22 +145,24 @@ $ `stdlib/core/string.nu`
                     ( string_push_str out `,"name":"` )
                     ( string_push_str out name_str )
                     ( string_push_str out `"}\n` )
-                    : HttpResponse r ( ctx_json ctx 201 ( string_data out ) )
+                    : HttpResponse r ( response_text 201 ( string_data out )  )
+                            ( response_set_header r `Content-Type` `application/json` )
                     ( string_free out )
                     ^ r
                 }
-                F → { ^ ( ctx_bad_request ctx `missing name field\n` ) }
+                F → { ^ ( response_text 400 `missing name field\n` ) }
             }
         }
-        F _ → { ^ ( ctx_bad_request ctx `invalid json body\n` ) }
+        F _ → { ^ ( response_text 400 `invalid json body\n` ) }
     }
 }
 
 @ handle_update_item ( Vec Item ) items HttpRequest req Params params → HttpResponse {
-    : Ctx ctx ( ctx_new req params )
-    : ?i id_opt ( ctx_param_i ctx `id` )
+    : ?String id_opt ( params_get params `id` )
     ?? id_opt {
-        T id → {
+        T sid → {
+            : i id ( str_to_int_or ( string_data sid ) -1 )
+            ? < id 0 { ^ ( response_text 400 `invalid id\n` ) } {}
             : i n ( vec_len [Item] items )
             : ~ i k 0
             ~ < k n {
@@ -144,26 +170,26 @@ $ `stdlib/core/string.nu`
                 ?? it_opt {
                     T it → {
                         ? == . it id id {
-                            : !Json ParseErr jr ( ctx_body_json ctx )
+                            : !Json ParseErr jr ( parse_body_json req )
                             ?? jr {
                                 T j → {
                                     : ?Json name_opt ( json_obj_get j `name` )
                                     ?? name_opt {
                                         T name_json → {
                                             ? ! ( json_is_str name_json ) {
-                                                ^ ( ctx_bad_request ctx `name must be a string\n` )
+                                                ^ ( response_text 400 `name must be a string\n` )
                                             } {}
-                                            : s name_str ( json_str_val name_json )
+                                            : s name_str ( json_str_data name_json )
                                             ( string_free . it name )
                                             : String nm ( string_new )
                                             ( string_push_str nm name_str )
                                             = . it name nm
-                                            ^ ( ctx_ok ctx `updated\n` )
+                                            ^ ( response_text 200 `updated\n` )
                                         }
-                                        F → { ^ ( ctx_bad_request ctx `missing name field\n` ) }
+                                        F → { ^ ( response_text 400 `missing name field\n` ) }
                                     }
                                 }
-                                F _ → { ^ ( ctx_bad_request ctx `invalid json body\n` ) }
+                                F _ → { ^ ( response_text 400 `invalid json body\n` ) }
                             }
                         } {}
                     }
@@ -171,17 +197,18 @@ $ `stdlib/core/string.nu`
                 }
                 = k + k 1
             }
-            ^ ( ctx_not_found ctx `item not found\n` )
+            ^ ( response_text 404 `item not found\n` )
         }
-        F → { ^ ( ctx_bad_request ctx `invalid id\n` ) }
+        F → { ^ ( response_text 400 `missing id\n` ) }
     }
 }
 
 @ handle_delete_item ( Vec Item ) items HttpRequest req Params params → HttpResponse {
-    : Ctx ctx ( ctx_new req params )
-    : ?i id_opt ( ctx_param_i ctx `id` )
+    : ?String id_opt ( params_get params `id` )
     ?? id_opt {
-        T id → {
+        T sid → {
+            : i id ( str_to_int_or ( string_data sid ) -1 )
+            ? < id 0 { ^ ( response_text 400 `invalid id\n` ) } {}
             : i n ( vec_len [Item] items )
             : ~ i k 0
             ~ < k n {
@@ -189,21 +216,20 @@ $ `stdlib/core/string.nu`
                 ?? it_opt {
                     T it → {
                         ? == . it id id {
-                            // items[k].name = "DELETED" — soft delete via name mutation
                             ( string_free . it name )
                             : String nm ( string_new )
                             ( string_push_str nm `DELETED` )
                             = . it name nm
-                            ^ ( ctx_no_content ctx )
+                            ^ ( response_text 204 `` )
                         } {}
                     }
                     F → {}
                 }
                 = k + k 1
             }
-            ^ ( ctx_not_found ctx `item not found\n` )
+            ^ ( response_text 404 `item not found\n` )
         }
-        F → { ^ ( ctx_bad_request ctx `invalid id\n` ) }
+        F → { ^ ( response_text 400 `missing id\n` ) }
     }
 }
 
