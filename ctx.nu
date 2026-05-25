@@ -25,6 +25,7 @@
 $ `nurlweb/app.nu`
 $ `nurlweb/respond.nu`
 $ `stdlib/ext/http_full.nu`
+$ `stdlib/ext/http_multipart.nu`
 $ `stdlib/ext/json.nu`
 $ `stdlib/core/string.nu`
 $ `stdlib/core/option.nu`
@@ -126,11 +127,11 @@ $ `stdlib/core/option.nu`
     : ?String decoded ( ctx_query c name )
     ?? decoded {
         T val → {
-            : Vec<String> vs ( vec_new [String] )
+            : Vec String vs ( vec_new [String] )
             ( vec_push [String] vs val )
             ^ @ ?( Vec String ) { T vs }
         }
-        F → { ^ @ ?( Vec String ) { F @ Vec String {} } }
+        F → { ^ @ ?( Vec String ) { F } }
     }
 }
 
@@ -159,6 +160,76 @@ $ `stdlib/core/option.nu`
         ^ @ !Json ParseErr { F @ ParseErr { Empty } }
     }
 }
+// ── UrlEncodedPair — key/value from form-urlencoded body ──────────
+
+: UrlEncodedPair {
+    String key
+    String value
+}
+
+// ── Body parsers (form, urlencoded, text) ────────────────────────────
+//
+// ctx_body_form: parses multipart/form-data (same path as upload_parts)
+// ctx_body_urlencoded: parses application/x-www-form-urlencoded from raw body
+// ctx_body_text: convenience wrapper returning String instead of raw s
+
+@ ctx_body_form Ctx c → ?( Vec MultipartPart ) {
+    ^ ( request_multipart_parts . c req )
+}
+
+@ ctx_body_urlencoded Ctx c → ?( Vec UrlEncodedPair ) {
+    : s raw ( ctx_body_raw c )
+    : i rlen ( nurl_str_len raw )
+    ? == rlen 0 {
+        ^ @ ?( Vec UrlEncodedPair ) { F }
+    } {}
+    : Vec UrlEncodedPair pairs ( vec_new [UrlEncodedPair] )
+    : ~ i pos 0
+    ~ < pos rlen {
+        : i amp ( nurl_has_byte raw + pos - rlen pos 38 )
+        : i seg_end ? < amp rlen amp rlen
+        // Extract key=value segment
+        : i seg_start pos
+        : i seg_len - seg_end seg_start
+        ? > seg_len 0 {
+            // Find '=' separator
+            : i eq ( nurl_has_byte raw + seg_start seg_len 61 )
+            : i key_end ? < eq + seg_start seg_start seg_len + seg_start seg_start
+            : i key_len - key_end seg_start
+            : i val_start ? < key_end seg_end + key_end 1 key_end
+            : i val_len - seg_end val_start
+            // Decode key and value
+            : String key_slice ( nurl_str_slice raw seg_start key_len )
+            : String decoded_key ( __url_decode ( string_data key_slice ) )
+            ( string_free key_slice )
+            : s dk_data ( string_data decoded_key )
+            : String dk_copy ( string_data ( nurl_str_cat dk_data `` ) )
+            ( string_free decoded_key )
+            : String val_slice ? > val_len 0 ( nurl_str_slice raw val_start val_len ) ( string_data ( nurl_str_cat `` `` ) )
+            : String decoded_val ( __url_decode ( string_data val_slice ) )
+            ( string_free val_slice )
+            : s dv_data ( string_data decoded_val )
+            : String dv_copy ( string_data ( nurl_str_cat dv_data `` ) )
+            ( string_free decoded_val )
+            // Push pair
+            : UrlEncodedPair pair @ UrlEncodedPair { dk_copy dv_copy }
+            ( vec_push [UrlEncodedPair] pairs pair )
+        } {}
+        = pos + seg_end 1
+    }
+    ^ @ ?( Vec UrlEncodedPair ) { T pairs }
+}
+
+@ ctx_body_text Ctx c → String {
+    : s raw ( ctx_body_raw c )
+    : i rlen ( nurl_str_len raw )
+    ? > rlen 0 {
+        ^ ( string_data ( nurl_str_cat raw `` ) )
+    } {
+        ^ ( string_data ( nurl_str_cat `` `` ) )
+    }
+}
+
 
 // ── Response helpers (delegate to respond.nu) ─────────────────────────
 //
