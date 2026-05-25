@@ -34,7 +34,7 @@ $ `stdlib/ext/http_static.nu`
 
 // Alias for discoverability
 @ static_dir Ctx ctx s dir → HttpResponse {
-    ^ ( static_serve dir ctx )
+    ^ ( static_serve ctx dir )
 }
 
 // ── Route registration convenience ────────────────────────────────────

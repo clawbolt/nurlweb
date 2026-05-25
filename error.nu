@@ -24,6 +24,7 @@
 //       })
 
 $ `nurlweb/app.nu`
+$ `nurlweb/respond.nu`
 $ `stdlib/ext/http_full.nu`
 $ `stdlib/core/string.nu`
 $ `stdlib/core/vec.nu`

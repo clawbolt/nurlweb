@@ -10,13 +10,14 @@
 // Include support: `{{> path/to/file }}` directives inline external
 // template files before var substitution. Max include depth: 8.
 //
-// WARNING: template_render does NOT escape HTML entities. Do NOT use
-// for HTML templates with untrusted user input — this will create XSS
-// vulnerabilities. This module is for plain-text string interpolation only.
+// WARNING: template_render does NOT escape HTML entities. Use
+// template_render_html for HTML contexts with untrusted input.
+// This module is safe for plain-text interpolation; HTML needs the html variant.
 //
 // API:
 //   ( template_render        s template ( Vec TemplateVar ) vars )  → String
-//   ( template_render_layout s layout  s content  ( Vec TemplateVar ) vars ) → String
+//   ( template_render_html    s template ( Vec TemplateVar ) vars )  → String
+//   ( template_render_layout  s layout  s content  ( Vec TemplateVar ) vars ) → String
 //   ( template_file          s path    ( Vec TemplateVar ) vars )  → !String IoErr
 
 $ `stdlib/core/string.nu`
@@ -302,6 +303,113 @@ $ `stdlib/std/fs.nu`
     : String rendered ( template_render final_data vars )
     ( string_free final_out )
     ^ rendered
+}
+
+// ── __html_escape — escape HTML entities ─────────────────────────────
+
+@ __html_escape s input → String {
+    : i ilen ( nurl_str_len input )
+    : String out ( string_with_cap ilen )
+    : ~ i pos 0
+    ~ < pos ilen {
+        : i c ( nurl_str_get input pos )
+        ?? c {
+            38  → { ( string_push_str out `&amp;` )  }
+            60  → { ( string_push_str out `&lt;` )   }
+            62  → { ( string_push_str out `&gt;` )   }
+            34  → { ( string_push_str out `&quot;` ) }
+            39  → { ( string_push_str out `&#39;` )  }
+            _   → { ( string_push_char out c ) }
+        }
+        = pos + pos 1
+    }
+    ^ out
+}
+
+// ── template_render_html — HTML-safe template rendering ──────────────
+//
+// Identical to template_render but HTML-escapes all substituted values.
+// Use for HTML templates with untrusted user input.
+// Escape set: < → &lt;, > → &gt;, & → &amp;, " → &quot;, ' → &#39;
+
+@ template_render_html s template ( Vec TemplateVar ) vars → String {
+    : i tlen ( nurl_str_len template )
+
+    : String expanded ( string_with_cap + tlen 256 )
+    ( __resolve_includes expanded template tlen 0 )
+
+    : s expanded_data ( string_data expanded )
+    : i elen ( nurl_str_len expanded_data )
+    : String out ( string_with_cap + elen 256 )
+    : ~ i pos 0
+
+    ~ < pos elen {
+        : i c1 ( nurl_str_get expanded_data pos )
+        : b left_brace == c1 123
+        : b has_next < + pos 1 elen
+        ? & left_brace has_next {
+            : i c2 ( nurl_str_get expanded_data + pos 1 )
+            ? == c2 123 {
+                : i close_end ( __scan_to_close expanded_data + pos 2 elen )
+                : b found_close >= close_end + pos 2
+                ? found_close {
+                    : i key_len - close_end + pos 2
+                    : i vn ( vec_len [TemplateVar] vars )
+                    : ~ i vi 0
+                    : ~ b found F
+                    ~ & ! found < vi vn {
+                        : ?TemplateVar tv_opt ( vec_get [TemplateVar] vars vi )
+                        ?? tv_opt {
+                            T tv → {
+                                : s tvkey ( string_data . tv key )
+                                : i tvklen ( nurl_str_len tvkey )
+                                : b same_len == tvklen key_len
+                                : ~ b match T
+                                ? same_len {
+                                    : ~ i m 0
+                                    ~ & match < m key_len {
+                                        ? != ( nurl_str_get expanded_data + pos 2 m ) ( nurl_str_get tvkey m ) {
+                                            = match F
+                                        } {}
+                                        = m + m 1
+                                    }
+                                } { = match F }
+                                ? match {
+                                    : String escaped ( __html_escape ( string_data . tv value ) )
+                                    ( string_push_str out ( string_data escaped ) )
+                                    ( string_free escaped )
+                                    = found T
+                                } {}
+                            }
+                            F → {}
+                        }
+                        = vi + vi 1
+                    }
+                    ? ! found {
+                        : ~ i kk - pos 2
+                        ~ < kk + close_end 2 {
+                            ( string_push_char out ( nurl_str_get expanded_data kk ) )
+                            = kk + kk 1
+                        }
+                    } {}
+                    = pos + close_end 2
+                } {
+                    ( string_push_char out 123 )
+                    ( string_push_char out 123 )
+                    = pos + pos 2
+                }
+            } {
+                ( string_push_char out c1 )
+                = pos + pos 1
+            }
+        } {
+            ( string_push_char out c1 )
+            = pos + pos 1
+        }
+    }
+
+    ( string_free expanded )
+    ^ out
 }
 
 // ── template_file — read file then render ────────────────────────────
