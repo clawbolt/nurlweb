@@ -21,6 +21,15 @@ $ `stdlib/ext/http_full.nu`
     ^ . b worker_count
 }
 
+// ── Test: app_with_dos sets per-IP DoS limits (individual fields) ─────
+
+@ test_app_dos → i {
+    : App a ( app_new `0.0.0.0` 4000 )
+    : App b ( app_with_dos a 512 8 )
+    : i mc . b dos_max_conns
+    ^ mc
+}
+
 // ── Test: route registration compiles ─────────────────────────────────
 
 @ test_routes → v {

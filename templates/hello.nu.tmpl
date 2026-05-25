@@ -1,0 +1,26 @@
+// {{PROJECT_NAME}}/hello.nu — Minimal nurlweb hello-world
+//
+// A single-route server. Good starting point for small services.
+
+$ `nurlweb/app.nu`
+$ `nurlweb/ctx.nu`
+
+@ main → i {
+    : App app ( app_new `127.0.0.1` 3900 )
+
+    ( app_get app `/`
+        \ HttpRequest req Params params → HttpResponse {
+            : Ctx ctx ( ctx_new req params )
+            ^ ( ctx_html ctx 200 `<h1>{{PROJECT_NAME}}</h1>\n<p>Powered by nurlweb</p>\n` )
+        })
+
+    ( nurl_print `{{PROJECT_NAME}} on http://127.0.0.1:3900\n` )
+
+    : !v NetErr rr ( app_serve app )
+    ( app_free app )
+
+    ?? rr {
+        T _ → { ^ 0 }
+        F _ → { ^ 1 }
+    }
+}

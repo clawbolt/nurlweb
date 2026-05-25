@@ -10,3 +10,10 @@
 // ctx.nu transitively includes app.nu — single $ line pulls everything.
 
 $ `nurlweb/ctx.nu`
+
+// ── v1.2 modules ─────────────────────────────────────────────────────
+//
+// $ `nurlweb/session.nu`    // cookie + server-side SessionStore
+// $ `nurlweb/upload.nu`     // multipart file upload (upload_parts)
+// $ `nurlweb/template.nu`   // {{key}} + layout/include rendering
+// $ `nurlweb/cors.nu`       // permissive CORS middleware

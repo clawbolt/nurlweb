@@ -11,6 +11,7 @@
 // API:
 //   ( app_new            s host i port )                  → App
 //   ( app_with_workers   App a i n )                      → App
+//   ( app_with_dos       App a i max_conns i max_per_ip ) → App
 //
 //   ( app_get    App a s route handler )                  → v
 //   ( app_post   App a s route handler )                  → v
@@ -47,6 +48,8 @@ $ `stdlib/ext/http_server.nu`
     s host
     i port
     i worker_count
+    i dos_max_conns
+    i dos_max_per_ip
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -58,11 +61,21 @@ $ `stdlib/ext/http_server.nu`
     // returns HttpResponse, matching the server's handler contract.
     : ( @ HttpResponse HttpRequest ) h
         \ HttpRequest req → HttpResponse { ^ ( router_handle r req ) }
-    ^ @ App { r h host port 0 }
+    ^ @ App { r h host port 0 0 0 }
 }
 
 @ app_with_workers App a i n → App {
     = . a worker_count n
+    ^ a
+}
+
+// app_with_dos — Enables per-IP DoS protection at the server accept
+// layer. Accepts individual fields (not the full stdlib DosLimits
+// struct) to avoid silently dropping fields added in future stdlib
+// versions. Set max_conns = 0 to disable (default).
+@ app_with_dos App a i max_conns i max_per_ip → App {
+    = . a dos_max_conns max_conns
+    = . a dos_max_per_ip max_per_ip
     ^ a
 }
 
@@ -115,11 +128,22 @@ $ `stdlib/ext/http_server.nu`
 // Shared bind: tcp_listen → server_new → signal_install → runner.
 // Takes a `runner` closure that receives the bound server and returns
 // !v NetErr; app_close unconditionally after the runner finishes.
+// When dos_max_conns > 0, uses server_new_with_dos for per-IP DoS
+// protection (constructs DosLimits internally — no leaky struct pass-through).
 @ __serve_bind App a ( @ !v NetErr HttpServer ) runner → !v NetErr {
     : ! TcpListener NetErr lr ( tcp_listen . a host . a port )
     ?? lr {
         T listener → {
-            : HttpServer srv ( server_new listener . a handler )
+            : i dc . a dos_max_conns
+            : HttpServer srv
+            ? > dc 0 {
+                : DosLimits dl ( dos_default_limits )
+                = . dl max_concurrent_conns dc
+                = . dl max_conns_per_ip . a dos_max_per_ip
+                = srv ( server_new_with_dos listener . a handler dl )
+            } {
+                = srv ( server_new listener . a handler )
+            }
             ( signal_install_shutdown listener )
             : !v NetErr rr ( runner srv )
             ( server_stop srv )
