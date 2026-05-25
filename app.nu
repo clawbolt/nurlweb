@@ -125,6 +125,7 @@ $ `stdlib/ext/http_server.nu`
 
 // ── Serve ─────────────────────────────────────────────────────────────
 
+
 // Shared bind: tcp_listen → server_new → signal_install → runner.
 // Takes a `runner` closure that receives the bound server and returns
 // !v NetErr; app_close unconditionally after the runner finishes.
