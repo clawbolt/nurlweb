@@ -1,4 +1,5 @@
 // nurlweb/respond.nu — Standalone Response Shortcuts (CANONICAL)
+// Stability: stable
 //
 // Response helpers that don't require Ctx as first argument — for use
 // in middleware and utility functions where Ctx isn't available.

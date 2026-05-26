@@ -1,4 +1,5 @@
 // nurlweb/app.nu — NurlWeb micro-framework v1
+// Stability: stable
 //
 // A ~200 LOC wiring reducer for the NURL HTTP stack. Single App struct
 // that owns router, middleware pipeline, server config, and the full
@@ -125,6 +126,7 @@ $ `stdlib/ext/http_server.nu`
 
 // ── Serve ─────────────────────────────────────────────────────────────
 
+
 // Shared bind: tcp_listen → server_new → signal_install → runner.
 // Takes a `runner` closure that receives the bound server and returns
 // !v NetErr; app_close unconditionally after the runner finishes.
@@ -135,15 +137,10 @@ $ `stdlib/ext/http_server.nu`
     ?? lr {
         T listener → {
             : i dc . a dos_max_conns
-            : HttpServer srv
-            ? > dc 0 {
-                : DosLimits dl ( dos_default_limits )
-                = . dl max_concurrent_conns dc
-                = . dl max_conns_per_ip . a dos_max_per_ip
-                = srv ( server_new_with_dos listener . a handler dl )
-            } {
-                = srv ( server_new listener . a handler )
-            }
+            : DosLimits dl ( dos_default_limits )
+            = . dl max_concurrent_conns dc
+            = . dl max_conns_per_ip . a dos_max_per_ip
+            : HttpServer srv ( server_new_with_dos listener . a handler dl )
             ( signal_install_shutdown listener )
             : !v NetErr rr ( runner srv )
             ( server_stop srv )

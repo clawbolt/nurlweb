@@ -1,4 +1,5 @@
 // nurlweb/routegroup.nu — Route Grouping
+// Stability: stable
 //
 // Prefix-based route grouping on a shared Router. RouteGroup holds a
 // reference to the parent App's Router + a prefix string — no second
